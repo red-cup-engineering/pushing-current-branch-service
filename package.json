@@ -1,0 +1,19 @@
+{
+  "name": "@red-cup-engineering/pushing-current-branch-service",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Pushes the current Git branch to a remote.",
+  "bin": {
+    "push-current-branch": "./scripts/push-current-branch.mjs"
+  },
+  "exports": "./scripts/push-current-branch.mjs",
+  "scripts": {
+    "check": "node --check scripts/push-current-branch.mjs",
+    "test": "node --test test/*.test.mjs",
+    "verify": "npm run check && npm test"
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}
