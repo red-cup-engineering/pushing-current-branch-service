@@ -7,18 +7,23 @@
 // CLI:    push-current-branch
 //           [--cwd <dir>] [--remote <name>] [--branch <name>] [--set-upstream] [--git-bin <path>]
 //
-// The Git binary is resolved from the option, MANAGED_GIT, then PATH.
+// The Git binary is resolved from the option, GIT_SERVICES_BIN, the legacy
+// MANAGED_GIT variable, then this section's managed wrapper.
 
 import { spawnSync } from 'node:child_process';
-import { resolve, isAbsolute } from 'node:path';
+import { dirname, resolve, isAbsolute } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+const scriptDirectory = dirname(fileURLToPath(import.meta.url));
+const defaultGit = resolve(scriptDirectory, '../../../scripts/git-services');
+
 function resolveGitBin(gitBin) {
-  return gitBin || process.env.MANAGED_GIT || 'git';
+  return gitBin || process.env.GIT_SERVICES_BIN || process.env.MANAGED_GIT || defaultGit;
 }
 
 function runGit(gitBin, cwd, args, { capture = true } = {}) {
-  const result = spawnSync(resolveGitBin(gitBin), ['-C', cwd, ...args], {
+  const result = spawnSync(resolveGitBin(gitBin), args, {
+    cwd,
     encoding: 'utf8',
     stdio: capture ? ['ignore', 'pipe', 'pipe'] : 'inherit',
   });
