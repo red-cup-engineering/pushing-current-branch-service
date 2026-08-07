@@ -7,18 +7,17 @@
 // CLI:    push-current-branch
 //           [--cwd <dir>] [--remote <name>] [--branch <name>] [--set-upstream] [--git-bin <path>]
 //
-// The Git binary is resolved from the option, GIT_SERVICES_BIN, the legacy
-// MANAGED_GIT variable, then this section's managed wrapper.
+// The Git binary defaults to the system Git and may be overridden explicitly
+// for tests.
 
 import { spawnSync } from 'node:child_process';
-import { dirname, resolve, isAbsolute } from 'node:path';
+import { resolve, isAbsolute } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-const scriptDirectory = dirname(fileURLToPath(import.meta.url));
-const defaultGit = resolve(scriptDirectory, '../../../scripts/git-services');
+const defaultGit = '/usr/bin/git';
 
 function resolveGitBin(gitBin) {
-  return gitBin || process.env.GIT_SERVICES_BIN || process.env.MANAGED_GIT || defaultGit;
+  return gitBin || defaultGit;
 }
 
 function runGit(gitBin, cwd, args, { capture = true } = {}) {
@@ -46,7 +45,7 @@ export default async function pushTheCurrentBranch({ cwd, remote = 'origin', bra
   if (localBranch === 'HEAD') throw new Error(`HEAD is detached in ${root}; refusing to push without an explicit branch`);
   const remoteBranch = branch ?? localBranch;
 
-  const args = ['push'];
+  const args = ['push', '--recurse-submodules=check'];
   if (setUpstream) args.push('-u');
   args.push(remote, `HEAD:${remoteBranch}`);
   const push = runGit(gitBin, root, args);
