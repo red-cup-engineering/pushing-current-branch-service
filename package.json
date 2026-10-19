@@ -6,8 +6,7 @@
   "description": "Pushes the current Git branch to a remote.",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/red-cup-engineering/git-services-section.git",
-    "directory": "services/pushing-current-branch-service"
+    "url": "git+https://github.com/red-cup-engineering/pushing-current-branch-service.git"
   },
   "bin": {
     "push-current-branch": "./scripts/push-current-branch.mjs"
