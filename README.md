@@ -31,7 +31,8 @@ additional native defense, not the declared-supplier proof.
 Transport errors during admission carry `stage: source-admission` and
 `code: GIT_SOURCE_UNAVAILABLE`; absence is not inferred from an access or
 transport failure. A push transport failure carries `stage: push` and either
-`GIT_PUSH_REJECTED` for an explicit non-fast-forward rejection or
+`GIT_PUSH_REJECTED` only for an exact selected-ref native porcelain non-fast-forward rejection
+with normal exit status 1 (never remote stderr or a timeout/spawn error), or
 `GIT_PUSH_UNCERTAIN`. An uncertain push needs remote readback before retrying.
 Validation/budget failures also hold the operation before push and must not be
 treated as permission to follow/reset the local branch.
