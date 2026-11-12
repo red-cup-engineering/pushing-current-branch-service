@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
-import { mkdtemp, rm, writeFile, mkdir, readFile } from "node:fs/promises";
+import { mkdtemp, rm, writeFile, mkdir, readFile, chmod } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
@@ -157,5 +157,23 @@ test('source transport failure and explicit parent rejection have distinct stage
   const received = git(e.parent.remote, ['rev-parse', 'main']);
   await assert.rejects(e.push(), error => error.stage === 'push' && error.code === 'GIT_PUSH_REJECTED');
   assert.equal(git(e.parent.remote, ['rev-parse', 'main']), received);
+});
+
+test('lost acknowledgment after a real push is uncertain, not an admission refusal', async t => {
+  const e = await estate(t); await e.change(e.parent);
+  const shim = join(e.root, 'git-lost-ack.mjs');
+  await writeFile(shim, `#!/usr/bin/env node\nimport {spawnSync} from 'node:child_process';\nconst args=process.argv.slice(2),r=spawnSync('/usr/bin/git',args,{stdio:'inherit'});\nprocess.exit(args.includes('push')&&r.status===0?1:r.status??1);\n`);
+  await chmod(shim, 0o755);
+  const commit = git(e.parent.path, ['rev-parse', 'HEAD']);
+  await assert.rejects(pushCommit({ cwd: e.parent.path, remoteUrl: e.parent.remote,
+    branch: 'main', commit, gitBin: shim }), error => error.stage === 'push' && error.code === 'GIT_PUSH_UNCERTAIN');
+  assert.equal(git(e.parent.remote, ['rev-parse', 'main']), commit, 'remote accepted before acknowledgment loss');
+});
+
+test('bounded admission timeout leaves parent unpublished', async t => {
+  const e = await estate(t); await e.mount(e.parent, e.child);
+  await assert.rejects(pushCommit({ cwd: e.parent.path, remoteUrl: e.parent.remote,
+    branch: 'main', commit: git(e.parent.path, ['rev-parse', 'HEAD']), timeoutMs: 1 }), /budget exhausted|unavailable/);
+  e.unchanged();
 });
 
