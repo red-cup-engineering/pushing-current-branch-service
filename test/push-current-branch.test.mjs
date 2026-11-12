@@ -162,7 +162,7 @@ test('source transport failure and explicit parent rejection have distinct stage
 test('lost acknowledgment after a real push is uncertain, not an admission refusal', async t => {
   const e = await estate(t); await e.change(e.parent);
   const shim = join(e.root, 'git-lost-ack.mjs');
-  await writeFile(shim, `#!/usr/bin/env node\nimport {spawnSync} from 'node:child_process';\nconst args=process.argv.slice(2),r=spawnSync('/usr/bin/git',args,{stdio:'inherit'});\nprocess.exit(args.includes('push')&&r.status===0?1:r.status??1);\n`);
+  await writeFile(shim, `#!/usr/bin/env node\nimport {spawnSync} from 'node:child_process';\nconst args=process.argv.slice(2),r=spawnSync('/usr/bin/git',args,{stdio:'inherit'});\nif(args.includes('push'))process.stderr.write('remote: fetch first for the next operation\\n');\nprocess.exit(args.includes('push')&&r.status===0?1:r.status??1);\n`);
   await chmod(shim, 0o755);
   const commit = git(e.parent.path, ['rev-parse', 'HEAD']);
   await assert.rejects(pushCommit({ cwd: e.parent.path, remoteUrl: e.parent.remote,

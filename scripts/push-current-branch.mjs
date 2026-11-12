@@ -39,12 +39,18 @@ export async function pushCommit({ cwd, remoteUrl, commit, branch,
     const r = spawnSync(gitBin, ['-c', 'protocol.allow=never', '-c', 'protocol.file.allow=always',
       '-c', 'protocol.https.allow=always', '-c', 'protocol.ssh.allow=always', '-C', dir, ...args], { encoding: 'utf8',
       timeout: remaining, killSignal: 'SIGKILL', maxBuffer: 16 * 1024 * 1024,
-      env: { ...process.env, GIT_TERMINAL_PROMPT: '0' } });
+      env: { ...process.env, GIT_TERMINAL_PROMPT: '0', LC_ALL: 'C' } });
     if (r.error || r.status !== 0) {
       const error = new Error(stage === 'source-admission' ? 'declared source or Git transport unavailable' : 'Git push was not acknowledged');
       error.stage = stage;
+      // Only Git's selected-ref porcelain record can prove a rejected write.
+      // Remote diagnostics are arbitrary text; transport loss is always uncertain.
+      const records = (r.stdout ?? '').split('\n').filter(line => /^[ !*+=-]\t/u.test(line));
+      const rejected = !r.error && !r.signal && r.status === 1 && records.length === 1 &&
+        ['non-fast-forward', 'fetch first'].some(reason =>
+          records[0] === `!\t${commit}:refs/heads/${branch}\t[rejected] (${reason})`);
       error.code = stage === 'source-admission' ? 'GIT_SOURCE_UNAVAILABLE'
-        : /\[rejected\]|non-fast-forward|fetch first/u.test(r.stderr ?? '') ? 'GIT_PUSH_REJECTED' : 'GIT_PUSH_UNCERTAIN';
+        : rejected ? 'GIT_PUSH_REJECTED' : 'GIT_PUSH_UNCERTAIN';
       throw error;
     }
     return r.stdout;
@@ -101,7 +107,7 @@ export async function pushCommit({ cwd, remoteUrl, commit, branch,
       }
     };
     receive(remoteUrl, commit, true);
-    const args = ['push', '--recurse-submodules=check'];
+    const args = ['push', '--porcelain', '--recurse-submodules=check'];
     args.push('--', remoteUrl, `${commit}:refs/heads/${branch}`);
     stage = 'push';
     git(root, args);
