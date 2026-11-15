@@ -41,3 +41,19 @@ Run `npm run verify`. The native suite uses real temporary bare repositories,
 including wrong-remote, unpublished descendant, historical-pin, and independent
 recursive-clone receiving cases. It does not establish production installation.
 
+
+## Preserve the source tree before pushing
+
+The exact push checks the selected commit before opening a connection. A
+transition from a parent with tracked files to a tree containing only
+`package.json` is refused as `GIT_SOURCE_SCOPE_REFUSED` at source admission.
+Create manifest edits from the parent tree (the Group's
+`committing-git-paths-service` implements literal-path commits). An initial
+metadata-only package is allowed; a later commit that restores the source can
+be pushed even if its history contains the incident. This does not scan or
+rewrite history.
+
+Run `npm run verify` to exercise real temporary Git repositories and check
+that the refused commit leaves the destination ref unchanged. The
+GitHub Engineering local landing consumer retains the local commit on this
+refusal and does not fetch or reset it.

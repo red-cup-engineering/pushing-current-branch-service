@@ -13,7 +13,8 @@
   "exports": "./scripts/push-current-branch.mjs",
   "scripts": {
     "check": "node --check scripts/push-current-branch.mjs",
-    "verify": "npm run check"
+    "verify": "npm run check && npm test",
+    "test": "node --test test/package-source-scope.test.mjs"
   },
   "engines": {
     "node": ">=22"

@@ -59,6 +59,23 @@ export async function pushCommit({ cwd, remoteUrl, commit, branch,
   git(root, ['check-ref-format', `refs/heads/${branch}`]);
   if (git(root, ['rev-parse', '--verify', `${commit}^{commit}`]).trim() !== commit)
     throw new Error('outgoing commit identity changed');
+  // An isolated index must be seeded from its parent. Refuse the distinctive
+  // result of an unseeded package-manifest commit before opening any transport.
+  // This protects the selected tree, not every historical commit on its branch.
+  const rootPaths = sha => git(root, ['ls-tree', '--name-only', '-z', sha]).split('\0').filter(Boolean);
+  const selectedPaths = rootPaths(commit);
+  if (selectedPaths.length === 1 && selectedPaths[0] === 'package.json') {
+    // Read the commit object rather than rev-list: shallow history can hide
+    // actual parent links. If any named parent is unreadable, admission holds.
+    const headers = git(root, ['cat-file', 'commit', commit]).split('\n\n', 1)[0];
+    const parents = [...headers.matchAll(/^parent ([0-9a-f]{40})$/gmu)].map(match => match[1]);
+    if (parents.some(parent => rootPaths(parent).some(path => path !== 'package.json'))) {
+      const error = new Error('outgoing package manifest is the only file and would drop its parent’s tracked paths');
+      error.code = 'GIT_SOURCE_SCOPE_REFUSED';
+      error.stage = 'source-admission';
+      throw error;
+    }
+  }
   const scratch = mkdtempSync(join(tmpdir(), 'declared-git-source-'));
   const seen = new Set();
   let count = 0;
